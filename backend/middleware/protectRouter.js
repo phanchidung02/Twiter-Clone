@@ -17,7 +17,7 @@ export async function protectRouter(req, res, next) {
       });
     }
 
-    const user = await User.findById(decoded.id).select('p-assword');
+    const user = await User.findById(decoded.id).select('-password');
     if (!user) {
       return res.status(400).json({
         status: 'fail',

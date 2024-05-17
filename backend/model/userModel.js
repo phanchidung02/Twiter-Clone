@@ -35,6 +35,13 @@ const userSchema = new mongoose.Schema(
         default: [],
       },
     ],
+    likedPost: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post',
+        default: [],
+      },
+    ],
     profileImg: {
       type: String,
       default: '',
