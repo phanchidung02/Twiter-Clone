@@ -7,6 +7,7 @@ import userRouter from './routes/userRouter.js';
 import postRouter from './routes/postRouter.js';
 import notificationRouter from './routes/notificationRouter.js';
 import { v2 as cloudinary } from 'cloudinary';
+import cors from 'cors';
 dotenv.config();
 
 cloudinary.config({
@@ -17,6 +18,12 @@ cloudinary.config({
 
 const app = express();
 const port = process.env.PORT || 8000;
+app.use(
+  cors({
+    origin: 'http://localhost:5173', // Địa chỉ frontend của bạn
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

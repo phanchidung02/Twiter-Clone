@@ -2,11 +2,15 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
 import XSvg from '../../../components/Xsvg';
+import toast from 'react-hot-toast';
 
 import { MdOutlineMail } from 'react-icons/md';
 import { FaUser } from 'react-icons/fa';
 import { MdPassword } from 'react-icons/md';
 import { MdDriveFileRenameOutline } from 'react-icons/md';
+import axios from 'axios';
+import { useMutation } from '@tanstack/react-query';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -16,16 +20,32 @@ const SignUp = () => {
     password: '',
   });
 
+  const { mutate, isError, isPending, error } = useMutation({
+    mutationFn: async (formData) => {
+      try {
+        const res = await axios.post(
+          'http://localhost:5000/api/auth/signup',
+          formData
+        );
+        if (res.status !== 200) throw new Error('Something went wrong');
+        const data = res.data;
+        if (data.status === 'fail') throw new Error(data.message);
+        return data;
+      } catch (err) {
+        console.log(err);
+        toast.error(err.response.data.message);
+      }
+    },
+    onSuccess: () => toast.success('Sign up successfully'),
+  });
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log(formData);
+    mutate(formData);
   };
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
-  const isError = false;
 
   return (
     <div className="max-w-screen-xl mx-auto flex h-screen px-10">
@@ -86,9 +106,9 @@ const SignUp = () => {
             />
           </label>
           <button className="btn rounded-full btn-primary text-white">
-            Sign up
+            {isPending ? <LoadingSpinner></LoadingSpinner> : 'Sign up'}
           </button>
-          {isError && <p className="text-red-500">Something went wrong</p>}
+          {isError && <p className="text-red-500">{error.message}</p>}
         </form>
         <div className="flex flex-col lg:w-2/3 gap-2 mt-4">
           <p className="text-white text-lg">Already have an account?</p>

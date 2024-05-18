@@ -3,16 +3,42 @@ import XSvg from '../Xsvg';
 import { MdHomeFilled } from 'react-icons/md';
 import { IoNotifications } from 'react-icons/io5';
 import { FaUser } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { BiLogOut } from 'react-icons/bi';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Sidebar = () => {
-  const data = {
-    fullName: 'John Doe',
-    username: 'johndoe',
-    profileImg: '/avatars/boy1.png',
-  };
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { mutate } = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await axios.post(
+          'http://localhost:5000/api/auth/logout',
+          {},
+          {
+            withCredentials: true,
+          }
+        );
+        // if (!res.ok) throw new Error('Something went wrong');
+        console.log(res.data);
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Logout successful');
+      queryClient.invalidateQueries({ queryKey: ['authUser'] });
+    },
+    onError: () => {
+      toast.error('Logout unsuccessful');
+    },
+  });
 
+  const { data } = useQuery({ queryKey: ['authUser'] });
   return (
     <div className="md:flex-[2_2_0] w-18 max-w-52">
       <div className="sticky top-0 left-0 h-screen flex flex-col border-r border-gray-700 w-20 md:w-full">
@@ -69,7 +95,13 @@ const Sidebar = () => {
                 </p>
                 <p className="text-slate-500 text-sm">@{data?.username}</p>
               </div>
-              <BiLogOut className="w-5 h-5 cursor-pointer" />
+              <BiLogOut
+                className="w-5 h-5 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  mutate();
+                }}
+              />
             </div>
           </Link>
         )}
