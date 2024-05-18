@@ -5,23 +5,49 @@ import { FaRegBookmark } from 'react-icons/fa6';
 import { FaTrash } from 'react-icons/fa';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import LoadingSpinner from './LoadingSpinner';
 
 const Post = ({ post }) => {
   const [comment, setComment] = useState('');
   const postOwner = post.user;
+  const { data: authUser } = useQuery({ queryKey: ['authUser'] });
   const isLiked = false;
+  const isMyPost = authUser._id === post.user._id;
 
-  const isMyPost = true;
+  const queryClient = useQueryClient();
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await axios.delete(
+          `http://localhost:5000/api/posts/delete/${post._id}`,
+          { withCredentials: true }
+        );
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+      } catch (err) {
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Deleted');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: () => toast.error('Not Delete'),
+  });
 
   const formattedDate = '1h';
 
   const isCommenting = false;
 
-  const handleDeletePost = () => {};
-
-  const handlePostComment = (e) => {
-    e.preventDefault();
+  const handleDeletePost = () => {
+    mutate();
   };
+
+  const handlePostComment = () => {};
 
   const handleLikePost = () => {};
 
@@ -50,10 +76,13 @@ const Post = ({ post }) => {
             </span>
             {isMyPost && (
               <span className="flex justify-end flex-1">
-                <FaTrash
-                  className="cursor-pointer hover:text-red-500"
-                  onClick={handleDeletePost}
-                />
+                {!isPending && (
+                  <FaTrash
+                    className="cursor-pointer hover:text-red-500"
+                    onClick={handleDeletePost}
+                  />
+                )}
+                {isPending && <LoadingSpinner></LoadingSpinner>}
               </span>
             )}
           </div>
