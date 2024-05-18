@@ -11,9 +11,9 @@ import cors from 'cors';
 dotenv.config();
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: 'dtpe30m3g',
+  api_key: '987923261799866',
+  api_secret: 'DyMz3zLSm5mQpQNhPlxKMHh0p-M',
 });
 
 const app = express();
@@ -24,7 +24,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 

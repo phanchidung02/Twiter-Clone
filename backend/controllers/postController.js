@@ -24,7 +24,7 @@ async function createPost(req, res) {
 
     if (image) {
       const uploadImg = await cloudinary.uploader.upload(image);
-      image = uploadProfileImg.secure_url;
+      image = uploadImg.secure_url;
     }
     const newPost = new Post({
       user: req.user._id,
@@ -36,7 +36,7 @@ async function createPost(req, res) {
 
     return res.status(201).json({
       status: 'success',
-      data: [newPost],
+      data: newPost,
     });
   } catch (err) {
     console.log(`Error in postController: ${err.message}`);

@@ -2,23 +2,52 @@ import { CiImageOn } from 'react-icons/ci';
 import { BsEmojiSmileFill } from 'react-icons/bs';
 import { useRef, useState } from 'react';
 import { IoCloseSharp } from 'react-icons/io5';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const CreatePost = () => {
   const [text, setText] = useState('');
   const [img, setImg] = useState(null);
+  const queryClient = useQueryClient();
 
   const imgRef = useRef(null);
 
-  const isPending = false;
-  const isError = false;
+  const { data: authUser } = useQuery({ queryKey: ['authUser'] });
 
-  const data = {
-    profileImg: '/avatars/boy1.png',
-  };
+  const { mutate, isPending, isError, error } = useMutation({
+    mutationFn: async ({ text, img }) => {
+      try {
+        const res = await axios.post(
+          'http://localhost:5000/api/posts/create',
+          { text, image: img },
+          {
+            withCredentials: true,
+          }
+        );
+        console.log(res);
+        const data = res.data;
+
+        if (res.status !== 201) throw new Error('Something went wrong');
+        return data;
+      } catch (err) {
+        console.log(err.response);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      setText('');
+      setImg(null);
+      toast.success('Posted');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: () => toast.error('Post unsuccess'),
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert('Post created successfully');
+    mutate({ text, img });
   };
 
   const handleImgChange = (e) => {
@@ -36,7 +65,7 @@ const CreatePost = () => {
     <div className="flex p-4 items-start gap-4 border-b border-gray-700">
       <div className="avatar">
         <div className="w-8 rounded-full">
-          <img src={data.profileImg || '/avatar-placeholder.png'} />
+          <img src={authUser.profileImg || '/avatar-placeholder.png'} />
         </div>
       </div>
       <form className="flex flex-col gap-2 w-full" onSubmit={handleSubmit}>
@@ -78,10 +107,10 @@ const CreatePost = () => {
             onChange={handleImgChange}
           />
           <button className="btn btn-primary rounded-full btn-sm text-white px-4">
-            {isPending ? 'Posting...' : 'Post'}
+            {isPending ? <LoadingSpinner></LoadingSpinner> : 'Post'}
           </button>
         </div>
-        {isError && <div className="text-red-500">Something went wrong</div>}
+        {isError && <div className="text-red-500">{error.message}</div>}
       </form>
     </div>
   );
