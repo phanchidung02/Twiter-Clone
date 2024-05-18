@@ -18,9 +18,9 @@ export default {
       },
       {
         dark: {
-          ...require('daisyui/src/theming/themes')['dark'],
-          primary: 'indigo',
-          secondary: 'cyan',
+          ...require('daisyui/src/theming/themes')['black'],
+          primary: 'rgb(29, 155, 240)',
+          secondary: 'rgb(24, 24, 24)',
         },
       },
     ],
