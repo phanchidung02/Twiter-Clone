@@ -11,11 +11,11 @@ import { FaArrowLeft } from 'react-icons/fa6';
 import { IoCalendarOutline } from 'react-icons/io5';
 import { FaLink } from 'react-icons/fa';
 import { MdEdit } from 'react-icons/md';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import useFollow from '../../hooks/useFollow';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import toast from 'react-hot-toast';
+import useUpdateProfile from '../../hooks/useUpdateProfile';
 
 const ProfilePage = () => {
   const [coverImg, setCoverImg] = useState(null);
@@ -27,7 +27,6 @@ const ProfilePage = () => {
 
   // const isLoading = false;
   const { username } = useParams();
-  const queryClient = useQueryClient();
 
   const { data: authUser } = useQuery({ queryKey: ['authUser'] });
   const {
@@ -53,31 +52,7 @@ const ProfilePage = () => {
     },
   });
 
-  const { mutate: updatedProfile, isPending: isUpdatingProfile } = useMutation({
-    mutationFn: async ({ coverImg, profileImg }) => {
-      try {
-        const res = await axios.post(
-          `http://localhost:5000/api/updated`,
-          { coverImg, profileImg },
-          { withCredentials: true }
-        );
-        if (res.status !== 200) throw new Error('Something went wrong');
-        console.log(res.data);
-        return res.data;
-      } catch (err) {
-        console.log(err);
-        throw err;
-      }
-    },
-    onSuccess: () => {
-      toast.success('Success');
-      Promise.all([
-        (queryClient.invalidateQueries({ queryKey: ['authUser'] }),
-        queryClient.invalidateQueries({ queryKey: ['userProfile'] })),
-      ]);
-    },
-    onError: () => toast.error('Error in Profile'),
-  });
+  const { updatedProfile, isUpdatingProfile } = useUpdateProfile();
 
   const isMyProfile = user?._id === authUser._id;
   const { follow, isPending: isFollowing } = useFollow();
@@ -189,7 +164,12 @@ const ProfilePage = () => {
                 {(coverImg || profileImg) && (
                   <button
                     className="btn btn-primary rounded-full btn-sm text-white px-4 ml-2"
-                    onClick={() => updatedProfile({ coverImg, profileImg })}
+                    onClick={() =>
+                      updatedProfile({
+                        coverImg: coverImg,
+                        profileImg: profileImg,
+                      })
+                    }
                   >
                     {isUpdatingProfile ? (
                       <LoadingSpinner></LoadingSpinner>

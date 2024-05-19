@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import axios from 'axios';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import useUpdateProfile from '../../hooks/useUpdateProfile';
 
 const EditProfileModal = () => {
   const [formData, setFormData] = useState({
@@ -19,33 +17,7 @@ const EditProfileModal = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const queryClient = useQueryClient();
-
-  const { mutate: updatedProfile, isPending: isUpdatingProfile } = useMutation({
-    mutationFn: async () => {
-      try {
-        const res = await axios.post(
-          `http://localhost:5000/api/updated`,
-          formData,
-          { withCredentials: true }
-        );
-        if (res.status !== 200) throw new Error('Something went wrong');
-        console.log(res.data);
-        return res.data;
-      } catch (err) {
-        console.log(err);
-        throw err;
-      }
-    },
-    onSuccess: () => {
-      toast.success('Success');
-      Promise.all([
-        (queryClient.invalidateQueries({ queryKey: ['authUser'] }),
-        queryClient.invalidateQueries({ queryKey: ['userProfile'] })),
-      ]);
-    },
-    onError: () => toast.error('Error in Profile'),
-  });
+  const { updatedProfile, isUpdatingProfile } = useUpdateProfile();
 
   return (
     <>
@@ -64,7 +36,7 @@ const EditProfileModal = () => {
             className="flex flex-col gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              updatedProfile();
+              updatedProfile(formData);
             }}
           >
             <div className="flex flex-wrap gap-2">
