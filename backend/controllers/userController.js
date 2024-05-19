@@ -185,7 +185,10 @@ export async function updateUser(req, res) {
     user.coverImg = coverImg || user.coverImg;
 
     user = await user.save();
-    return res.status(200).json(user);
+    return res.status(200).json({
+      status: 'success',
+      data: user,
+    });
   } catch (err) {
     console.log(`Error in userController: ${err.message}`);
     res.status(500).json({

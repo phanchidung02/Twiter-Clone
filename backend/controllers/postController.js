@@ -214,6 +214,7 @@ async function deleteComment(req, res) {
     const comment = post.comments.find(
       (comment) => comment._id.toString() === commentId
     );
+
     if (post.user.toString() === req.user._id.toString()) {
       post.comments.pull(commentId);
     } else if (comment.user.toString() === req.user._id.toString()) {
@@ -256,7 +257,7 @@ async function likeAndUnlikePost(req, res) {
       user.likedPost.pull(id);
       const newNotification = new Notification({
         from: userId,
-        to: post.user._id,
+        to: post.user,
         type: 'unlike',
       });
       await newNotification.save();
@@ -274,10 +275,17 @@ async function likeAndUnlikePost(req, res) {
     await post.save();
     await user.save();
 
-    return res.status(200).json({
-      status: 'success',
-      message: checkIsLiked ? 'unlike' : 'like',
-    });
+    const updatedLikes = post.likes;
+
+    const updatedUnlike = post.likes.filter(
+      (post) => post._id.toString() !== userId.toString()
+    );
+
+    if (checkIsLiked) {
+      return res.status(200).json(updatedUnlike);
+    } else {
+      return res.status(200).json(updatedLikes);
+    }
   } catch (err) {
     console.log(`Error in postController: ${err.message}`);
     res.status(500).json({
@@ -293,13 +301,13 @@ async function getAllPost(req, res) {
       .sort({
         createdAt: -1,
       })
-      .populate('user', 'fullName username profileImg')
       .populate({
-        path: 'comments',
-        populate: {
-          path: 'user',
-          select: 'username fullName profileImg -_id',
-        },
+        path: 'user',
+        select: '-password',
+      })
+      .populate({
+        path: 'comments.user',
+        select: '-password',
       });
 
     if (!post)
@@ -336,13 +344,17 @@ async function getLikedPost(req, res) {
     })
       .populate({
         path: 'user',
-        select: 'username fullName profileImg -_id',
+        select: '-password',
       })
       .populate({
         path: 'comments.user',
-        select: 'username fullName profileImg',
+        select: '-password',
       });
-    return res.json(likedPost);
+
+    return res.status(200).json({
+      status: 'success',
+      data: likedPost,
+    });
   } catch (err) {
     console.log(`Error in postController: ${err.message}`);
     res.status(500).json({
@@ -400,17 +412,18 @@ async function getUserPost(req, res) {
       .sort({ createdAt: -1 })
       .populate({
         path: 'user',
-        select: 'username fullName profileImg -_id',
+        select: '-password',
       })
       .populate({
         path: 'comments.user',
-        select: 'username fullName profileImg',
+        select: '-password',
       });
 
     return res.status(200).json({
       status: 'success',
       data: post,
     });
+    return res.status(200).json(post);
   } catch (err) {
     console.log(`Error in postController: ${err.message}`);
     res.status(500).json({
