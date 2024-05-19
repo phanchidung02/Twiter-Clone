@@ -1,9 +1,29 @@
 import { Link } from 'react-router-dom';
 import RightPanelSkeleton from '../skeletons/RightPanelSkeleton';
-import { USERS_FOR_RIGHT_PANEL } from '../../utils/db/dummy';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import useFollow from '../../hooks/useFollow';
+import LoadingSpinner from './LoadingSpinner';
 
 const RightPanel = () => {
-  const isLoading = false;
+  const { data, isLoading } = useQuery({
+    queryKey: ['suggestedUser'],
+    queryFn: async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/suggested', {
+          withCredentials: true,
+        });
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+        return res.data;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    },
+  });
+
+  const { follow, isPending } = useFollow();
 
   return (
     <div className="hidden lg:block my-4 mx-2">
@@ -20,7 +40,7 @@ const RightPanel = () => {
             </>
           )}
           {!isLoading &&
-            USERS_FOR_RIGHT_PANEL?.map((user) => (
+            data.users.map((user) => (
               <Link
                 to={`/profile/${user.username}`}
                 className="flex items-center justify-between gap-4"
@@ -44,9 +64,12 @@ const RightPanel = () => {
                 <div>
                   <button
                     className="btn bg-white text-black hover:bg-white hover:opacity-90 rounded-full btn-sm"
-                    onClick={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      follow(user._id);
+                    }}
                   >
-                    Follow
+                    {isPending ? <LoadingSpinner></LoadingSpinner> : 'Follow'}
                   </button>
                 </div>
               </Link>

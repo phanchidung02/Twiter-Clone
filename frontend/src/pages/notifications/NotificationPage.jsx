@@ -4,32 +4,62 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { FaUser } from 'react-icons/fa';
 import { FaHeart } from 'react-icons/fa6';
+import {
+  useMutation,
+  useQuery,
+  QueryClient,
+  useQueryClient,
+} from '@tanstack/react-query';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const Notification = () => {
-  const isLoading = false;
-  const notifications = [
-    {
-      _id: '1',
-      from: {
-        _id: '1',
-        username: 'johndoe',
-        profileImg: '/avatars/boy2.png',
-      },
-      type: 'follow',
+  const queryClient = useQueryClient();
+  const { data: notifications, isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/notification', {
+          withCredentials: true,
+        });
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+        return res.data;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
     },
-    {
-      _id: '2',
-      from: {
-        _id: '2',
-        username: 'janedoe',
-        profileImg: '/avatars/girl1.png',
-      },
-      type: 'like',
+  });
+
+  const { mutate: delNotification } = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await axios.delete(
+          'http://localhost:5000/api/notification/deleteAll',
+          {
+            withCredentials: true,
+          }
+        );
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+        return res.data;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
     },
-  ];
+    onSuccess: () => {
+      toast.success('Deleted');
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: () => {
+      toast.error('huhu');
+    },
+  });
 
   const deleteNotifications = () => {
-    alert('All notifications deleted');
+    delNotification();
   };
 
   return (

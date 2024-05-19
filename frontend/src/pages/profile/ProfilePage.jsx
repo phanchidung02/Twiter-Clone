@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 
 import Posts from '../../components/common/Posts';
 import ProfileHeaderSkeleton from '../../components/skeletons/ProfileHeaderSkeleton';
@@ -11,6 +11,11 @@ import { FaArrowLeft } from 'react-icons/fa6';
 import { IoCalendarOutline } from 'react-icons/io5';
 import { FaLink } from 'react-icons/fa';
 import { MdEdit } from 'react-icons/md';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import useFollow from '../../hooks/useFollow';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const ProfilePage = () => {
   const [coverImg, setCoverImg] = useState(null);
@@ -20,20 +25,63 @@ const ProfilePage = () => {
   const coverImgRef = useRef(null);
   const profileImgRef = useRef(null);
 
-  const isLoading = false;
-  const isMyProfile = true;
+  // const isLoading = false;
+  const { username } = useParams();
+  const queryClient = useQueryClient();
 
-  const user = {
-    _id: '1',
-    fullName: 'John Doe',
-    username: 'johndoe',
-    profileImg: '/avatars/boy2.png',
-    coverImg: '/cover.png',
-    bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    link: 'https://youtube.com/@asaprogrammer_',
-    following: ['1', '2', '3'],
-    followers: ['1', '2', '3'],
-  };
+  const { data: authUser } = useQuery({ queryKey: ['authUser'] });
+  const {
+    data: user,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/profile/${username}`,
+          { withCredentials: true }
+        );
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+        return res.data;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    },
+  });
+
+  const { mutate: updatedProfile, isPending: isUpdatingProfile } = useMutation({
+    mutationFn: async ({ coverImg, profileImg }) => {
+      try {
+        const res = await axios.post(
+          `http://localhost:5000/api/updated`,
+          { coverImg, profileImg },
+          { withCredentials: true }
+        );
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+        return res.data;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Success');
+      Promise.all([
+        (queryClient.invalidateQueries({ queryKey: ['authUser'] }),
+        queryClient.invalidateQueries({ queryKey: ['userProfile'] })),
+      ]);
+    },
+    onError: () => toast.error('Error in Profile'),
+  });
+
+  const isMyProfile = user?._id === authUser._id;
+  const { follow, isPending: isFollowing } = useFollow();
+  const amIFollowed = authUser.following.includes(user?._id);
 
   const handleImgChange = (e, state) => {
     const file = e.target.files[0];
@@ -47,16 +95,23 @@ const ProfilePage = () => {
     }
   };
 
+  useEffect(
+    function () {
+      refetch();
+    },
+    [username, refetch]
+  );
+
   return (
     <>
       <div className="flex-[4_4_0]  border-r border-gray-700 min-h-screen ">
         {/* HEADER */}
-        {isLoading && <ProfileHeaderSkeleton />}
-        {!isLoading && !user && (
+        {isLoading || (isRefetching && <ProfileHeaderSkeleton />)}
+        {!isLoading && !isRefetching && !user && (
           <p className="text-center text-lg mt-4">User not found</p>
         )}
         <div className="flex flex-col">
-          {!isLoading && user && (
+          {!isLoading && !isRefetching && user && (
             <>
               <div className="flex gap-10 px-4 py-2 items-center">
                 <Link to="/">
@@ -125,17 +180,22 @@ const ProfilePage = () => {
                 {!isMyProfile && (
                   <button
                     className="btn btn-outline rounded-full btn-sm"
-                    onClick={() => alert('Followed successfully')}
+                    onClick={() => follow(user?._id)}
                   >
-                    Follow
+                    {isFollowing && <LoadingSpinner></LoadingSpinner>}
+                    {!isFollowing && amIFollowed ? 'Unfollow' : 'Follow'}
                   </button>
                 )}
                 {(coverImg || profileImg) && (
                   <button
                     className="btn btn-primary rounded-full btn-sm text-white px-4 ml-2"
-                    onClick={() => alert('Profile updated successfully')}
+                    onClick={() => updatedProfile({ coverImg, profileImg })}
                   >
-                    Update
+                    {isUpdatingProfile ? (
+                      <LoadingSpinner></LoadingSpinner>
+                    ) : (
+                      'Update'
+                    )}
                   </button>
                 )}
               </div>
@@ -181,7 +241,7 @@ const ProfilePage = () => {
                   </div>
                   <div className="flex gap-1 items-center">
                     <span className="font-bold text-xs">
-                      {user?.followers.length}
+                      {user?.follower.length}
                     </span>
                     <span className="text-slate-500 text-xs">Followers</span>
                   </div>
@@ -199,7 +259,9 @@ const ProfilePage = () => {
                 </div>
                 <div
                   className="flex justify-center flex-1 p-3 text-slate-500 hover:bg-secondary transition duration-300 relative cursor-pointer"
-                  onClick={() => setFeedType('likes')}
+                  onClick={() => {
+                    setFeedType('likes');
+                  }}
                 >
                   Likes
                   {feedType === 'likes' && (
@@ -210,7 +272,7 @@ const ProfilePage = () => {
             </>
           )}
 
-          <Posts />
+          <Posts feedType={feedType} username={username} userId={user?._id} />
         </div>
       </div>
     </>

@@ -4,9 +4,23 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useEffect } from 'react';
 
-const Posts = ({ feedType }) => {
-  const postEndPoint = feedType === 'forYou' ? 'all' : 'following';
+const Posts = ({ feedType, username, userId }) => {
+  const postEndPoint = () => {
+    switch (feedType) {
+      case 'forYou':
+        return 'all';
+      case 'following':
+        return 'following';
+      case 'posts':
+        return `user/${username}`;
+      case 'likes':
+        return `liked/${userId}`;
+      default:
+        return 'all';
+    }
+  };
 
+  const POST_ENDPOINT = postEndPoint();
   const {
     data: post,
     isLoading,
@@ -17,13 +31,12 @@ const Posts = ({ feedType }) => {
     queryFn: async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/posts/${postEndPoint}`,
+          `http://localhost:5000/api/posts/${POST_ENDPOINT}`,
           { withCredentials: true }
         );
         if (res.status !== 200) throw new Error('Something went wrong');
 
         const data = res.data;
-        console.log(data);
         return data.data;
       } catch (err) {
         throw err;
@@ -31,12 +44,10 @@ const Posts = ({ feedType }) => {
     },
   });
 
-  useEffect(
-    function () {
-      refetch();
-    },
-    [feedType, refetch]
-  );
+  useEffect(() => {
+    refetch();
+  }, [feedType, refetch]);
+
   return (
     <>
       {(isLoading || isRefetching) && (
@@ -49,7 +60,7 @@ const Posts = ({ feedType }) => {
       {(!isLoading || !isRefetching) && post?.length === 0 && (
         <p className="text-center my-4">No posts in this tab. Switch 👻</p>
       )}
-      {!isLoading && post && (
+      {!isLoading && !isRefetching && post && (
         <div>
           {post.map((post) => (
             <Post key={post._id} post={post} />

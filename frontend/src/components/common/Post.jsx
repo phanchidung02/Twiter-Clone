@@ -3,21 +3,47 @@ import { BiRepost } from 'react-icons/bi';
 import { FaRegHeart } from 'react-icons/fa';
 import { FaRegBookmark } from 'react-icons/fa6';
 import { FaTrash } from 'react-icons/fa';
+import { MdDelete } from 'react-icons/md';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from './LoadingSpinner';
+import useLike from '../../hooks/useLike';
+import useComment from '../../hooks/useComment';
 
 const Post = ({ post }) => {
   const [comment, setComment] = useState('');
   const postOwner = post.user;
   const { data: authUser } = useQuery({ queryKey: ['authUser'] });
-  const isLiked = false;
+  const isLiked = post.likes.includes(authUser._id);
   const isMyPost = authUser._id === post.user._id;
 
   const queryClient = useQueryClient();
+  const { mutate: deleteComment, isPending: isDeling } = useMutation({
+    mutationFn: async (commentId) => {
+      try {
+        const res = await axios.delete(
+          `http://localhost:5000/api/posts/${post._id}/comment/${commentId}`,
+          { withCredentials: true }
+        );
+        if (res.status !== 200) throw new Error('Something went wrong');
+        console.log(res.data);
+        return res.data;
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Deleted');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: () => {
+      toast.error('Fail Del Comment');
+    },
+  });
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
@@ -39,17 +65,27 @@ const Post = ({ post }) => {
     onError: () => toast.error('Not Delete'),
   });
 
-  const formattedDate = '1h';
+  const { like, isPending: isLiking } = useLike();
+  const { commentFn, isPending: isCommenting } = useComment();
+  // const { deleteComment, isPending: isDeling } = useDelComment();
 
-  const isCommenting = false;
+  const formattedDate = '1h';
 
   const handleDeletePost = () => {
     mutate();
   };
 
-  const handlePostComment = () => {};
+  const handlePostComment = (e) => {
+    e.preventDefault();
+    if (isCommenting) return;
+    setComment('');
+    commentFn({ id: post._id, text: comment });
+  };
 
-  const handleLikePost = () => {};
+  const handleLikePost = () => {
+    if (isLiking) return;
+    like(post._id);
+  };
 
   return (
     <>
@@ -147,6 +183,18 @@ const Post = ({ post }) => {
                           </div>
                           <div className="text-sm">{comment.text}</div>
                         </div>
+                        {isDeling && <LoadingSpinner></LoadingSpinner>}
+                        {comment.user.username === authUser.username &&
+                          !isDeling && (
+                            <button
+                              className="ml-auto p-0 bg-transparent border-none"
+                              onClick={() => {
+                                deleteComment(comment._id);
+                              }}
+                            >
+                              <MdDelete className="text-error" />
+                            </button>
+                          )}
                       </div>
                     ))}
                   </div>
@@ -160,7 +208,10 @@ const Post = ({ post }) => {
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                     />
-                    <button className="btn btn-primary rounded-full btn-sm text-white px-4">
+                    <button
+                      className="btn btn-primary rounded-full btn-sm text-white px-4"
+                      onClick={handlePostComment}
+                    >
                       {isCommenting ? (
                         <span className="loading loading-spinner loading-md"></span>
                       ) : (
@@ -183,16 +234,17 @@ const Post = ({ post }) => {
                 className="flex gap-1 items-center group cursor-pointer"
                 onClick={handleLikePost}
               >
-                {!isLiked && (
+                {isLiking && <LoadingSpinner></LoadingSpinner>}
+                {!isLiking && !isLiked && (
                   <FaRegHeart className="w-4 h-4 cursor-pointer text-slate-500 group-hover:text-pink-500" />
                 )}
-                {isLiked && (
+                {isLiked && !isLiking && (
                   <FaRegHeart className="w-4 h-4 cursor-pointer text-pink-500 " />
                 )}
 
                 <span
                   className={`text-sm text-slate-500 group-hover:text-pink-500 ${
-                    isLiked ? 'text-pink-500' : ''
+                    isLiking ? 'text-pink-500' : ''
                   }`}
                 >
                   {post.likes.length}
