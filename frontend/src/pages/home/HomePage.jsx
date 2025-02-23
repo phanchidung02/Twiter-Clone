@@ -17,7 +17,7 @@ const HomePage = () => {
             }
             onClick={() => setFeedType('forYou')}
           >
-            For you
+            This for you
             {feedType === 'forYou' && (
               <div className="absolute bottom-0 w-10  h-1 rounded-full bg-primary"></div>
             )}
